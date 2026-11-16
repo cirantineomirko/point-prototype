@@ -92,7 +92,7 @@
 <script>
   const frame = document.getElementById("app");
   const h = location.hash;
-  frame.src = "app.html?embed" + (h && h !== "#demo" ? h : "");
+  frame.src = "app.html?embed&v=" + Date.now() + (h && h !== "#demo" ? h : ""); // a fresh copy every time, so a new version shows at once
 
   const scaler = document.getElementById("scaler");
   function fit() {
