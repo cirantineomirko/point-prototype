@@ -361,8 +361,16 @@
   .how[open] summary::after { content: ""; }
   .how ol { margin: 6px 0 2px; padding-left: 20px; color: var(--ink2); line-height: 1.5; }
   .how li + li { margin-top: 4px; }
-  .alone { display: block; margin: 6px auto 0; min-height: 32px; padding: 0 10px; color: var(--blue); font-size: 13.5px; font-weight: 600; }
   .from { color: var(--violet); font-weight: 600; }
+  /* "again?": a recipe's missing items at the end of your list, written like the list itself */
+  .again { margin-top: 18px; }
+  .again .ahead { font-size: 15px; font-weight: 700; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .arow { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .arow .tx { flex: 1; min-width: 0; }
+  .arow .word { display: block; color: #8C96A8; }
+  .arow .pickl { color: var(--ink3); }
+  .plus { width: 30px; height: 30px; border-radius: 50%; background: var(--blue-soft); flex: none; display: grid; place-items: center; }
+  .plus svg { width: 14px; height: 14px; stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round; fill: none; }
   .toast .ring { width: 24px; height: 24px; }
   @media (max-width: 340px) { :root { --pad: 16px; } h1 { font-size: 27px; } .twobtn { grid-template-columns: 1fr; } }
 </style>
@@ -608,7 +616,7 @@ const st = {
     { id: "w", t: "Weekly shop", w: ["pasta", "oranges", "apples", "milk", "coffee", "olive oil"], when: "Today" },
     { id: "f", t: "Friday dinner", w: ["pasta", "tomatoes", "olive oil"], when: "Today", share: ["ma", "so"], by: { tomatoes: "ma" }, log: [{ m: "ma", t: "added tomatoes", at: Date.now() - 42 * 60000 }] },
     // Suggested by Point: a sustainable recipe, written as a list like any other
-    { id: "r", t: "Oat pancakes", w: ["oat milk", "oat flour", "bananas", "baking soda", "baking powder", "yoghurt", "vanilla protein powder"], when: "Suggested", recipe: "pancakes" },
+    { id: "r", t: "Oat pancakes", w: ["oat milk", "oat flour", "bananas", "baking soda", "baking powder", "yoghurt", "vanilla protein powder"], when: "Suggested", recipe: "pancakes", shopped: true, boughtAt: Date.now() - 7 * 864e5 },
     { id: "l", t: "Last week", w: ["apples", "milk", "tomatoes", "coffee"], when: "30.10.", shopped: true, prev: true },
   ],
   pick: {}, // "listId:category" -> chosen product name
@@ -654,29 +662,40 @@ function batches(l) {
   const m = Math.min(...per.map((x) => x.n));
   return { m, first: per.filter((x) => x.n === m).map((x) => x.w) };
 }
-// The list a recipe is added to: your most recent list still to shop.
-const recipeTarget = () => st.lists.find((x) => !x.prev && !x.recipe && !x.shopped && words(x).length);
 const onList = (tg, w) => words(tg).some((x) => norm(x) === norm(w) || (catOf(w) && catOf(x) === catOf(w)));
 const joinAnd = (a) => (a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]);
+const dm = (t) => { const d = new Date(t); return d.getDate() + "." + (d.getMonth() + 1) + "."; };
+// Next time: a recipe you bought before comes back at the end of your next list, with only what has run out.
+// Point cannot see your kitchen: it assumes you made the recipe as often as the packs allowed,
+// so the ingredients that run out first are the ones to buy; the rest should still be on your shelf.
+function restock(l) {
+  if (!l || l.recipe || l.shopped || l !== st.lists.find((x) => !x.prev && !x.recipe && !x.shopped && words(x).length)) return null;
+  const startOfDay = new Date().setHours(0, 0, 0, 0);
+  const rl = st.lists.find((x) => x.recipe && x.shopped && x.boughtAt < startOfDay); if (!rl) return null;
+  const R = RECIPES[rl.recipe], bt = batches(rl); if (!bt) return null;
+  const rows = words(rl).map((w) => { const r = resolve(w, rl.id), a = R.amt[r.cat]; return r.state === "ready" && a && r.pick.qty ? { w, r, a, left: r.pick.qty - bt.m * a[0] } : null; }).filter(Boolean);
+  const need = rows.filter((x) => x.left < x.a[0] - 1e-9);
+  const miss = need.filter((x) => !onList(l, x.w));
+  return miss.length ? { rl, miss } : null;
+}
+function restockHTML(rs) {
+  const plus = `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
+  return `<div class="again"><div class="ahead">${esc(rs.rl.t)} again?</div>${rs.miss.map((x) => `<div class="arow"><div class="tx"><span class="word">${esc(x.w)}</span><div class="pickl">${esc(x.r.pick.b)} · ${esc(x.r.pick.n)}</div></div><button class="plus" data-radd="${esc(x.w)}" aria-label="Add ${esc(x.w)}">${plus}</button></div>`).join("")}</div>`;
+}
+// One tap moves a word onto your list, marked with the recipe it is for.
+function addRestock(w) {
+  const l = curList(), rs = restock(l), x = rs && rs.miss.find((m) => m.w === w); if (!x) return;
+  l.w = [...words(l), w]; (l.from = l.from || {})[norm(w)] = rs.rl.t;
+  const k = rs.rl.id + ":" + x.r.cat; if (st.pick[k]) st.pick[l.id + ":" + x.r.cat] = st.pick[k]; // your pick comes along
+  logIt(l, "me", `added ${w} for ${rs.rl.t.toLowerCase()}`);
+  flashWord = norm(w); renderNote(); flashWord = null;
+}
 // Under each word: how much one batch uses and how often the pack lasts; on your own list, which recipe it is for.
 function useLine(l, r) {
   const n = l && packTimes(l, r);
   if (n !== null && n !== undefined && n !== false) return ` · ${RECIPES[l.recipe].amt[r.cat][1]} each time · pack lasts ${n > 12 ? "12+" : n}`;
   const fr = l && l.from && l.from[norm(r.word)];
   return fr ? ` · <span class="from">for ${esc(fr)}</span>` : "";
-}
-function addRecipe() {
-  const l = curList(), tg = recipeTarget(); if (!l || !tg) return;
-  const add = words(l).filter((w) => !onList(tg, w)), had = words(l).filter((w) => onList(tg, w));
-  tg.w = [...words(tg), ...add]; tg.from = tg.from || {};
-  add.forEach((w) => {
-    tg.from[norm(w)] = l.t;
-    const c = catOf(w); if (c && st.pick[l.id + ":" + c]) st.pick[tg.id + ":" + c] = st.pick[l.id + ":" + c]; // your picks come along
-  });
-  l.added = tg.id; logIt(tg, "me", `added ${add.length} ingredients for ${l.t.toLowerCase()}`);
-  flashWord = new Set(add.map(norm)); openList(tg.id, "done"); flashWord = null;
-  const first = document.querySelector("#noteBody .item.new"); if (first) setTimeout(() => first.scrollIntoView({ block: "center", behavior: "smooth" }), 160);
-  toast(`<i class="ring"></i><div>Added <b>${add.length} ingredients</b> to ${esc(tg.t)}<small>For ${esc(l.t)}${had.length ? ` · ${esc(joinAnd(had))} ${had.length === 1 ? "was" : "were"} already on it` : ""}${fam(tg) ? ` · ${names(tg.share)} see them now` : ""}</small></div>`, 3800);
 }
 
 function sring(v, size, track = "#E7ECF3") {
@@ -756,7 +775,7 @@ function shareList(l, ms) {
   closeSheets(); refresh();
   toast(`${avs(["me", ...ms])}<div>Shared with <b>${names(ms)}</b><small>They see “${esc(l.t)}” live on their phones</small></div>`);
   // In this prototype Sofia answers from her phone, to show that her change arrives live.
-  if (ms.includes("so")) setTimeout(() => familyAdd(l.id, "so", "yoghurt"), 3400 * PACE);
+  if (ms.includes("so")) setTimeout(() => familyAdd(l.id, "so", "tomatoes"), 3400 * PACE);
 }
 
 // ===================== Scan: a barcode, mid-shopping =====================
@@ -839,7 +858,9 @@ function show(id, push = true) {
   ({ lists: renderLists, note: renderNote, shops: renderShops, shop: renderShop, done: renderDone })[id]();
   $(id).scrollTop = push ? 0 : y; // going back returns to the same place
 }
-function back() { closeSheets(); if (hist.length > 1) { hist.pop(); show(hist[hist.length - 1], false); } }
+function back() {
+  closeSheets();
+  if (hist.length > 1) { hist.pop(); show(hist[hist.length - 1], false); } }
 document.addEventListener("click", (e) => {
   if (e.target.closest("[data-back]")) back();
   else if (e.target.closest("[data-shopbtn]")) show("shops");
@@ -857,10 +878,10 @@ function renderLists() {
     const stat = (l.shopped ? `<span class="st grey">Shopped · ${n} items</span>` : n === 0 ? `<span class="st grey"><i class="ring looking"></i>Writing…</span>` : `<span class="st"><i class="ring"></i>${f} of ${n} found</span>`).replace(/<\/span>$/, famTag + "</span>");
     return `<button class="lrow" data-list="${l.id}"><div><b>${esc(l.t || "New list")}</b><small>${l.when} ${esc(words(l).join(", "))}</small>${stat}</div>${chev}</button>`;
   };
-  // a recipe Point suggests sits next to your own lists, as a list you can open, shop or add to yours
+  // a recipe Point suggests sits next to your own lists, as a list of its own
   const rrow = (l) => {
-    const R = RECIPES[l.recipe], bt = batches(l), b = basket(l, st.shop), tg = l.added && st.lists.find((x) => x.id === l.added);
-    const stat = l.shopped ? "Shopped" : tg ? `✓ Added to ${esc(tg.t)}` : bt ? `These packs make it ${bt.m} times` : "";
+    const R = RECIPES[l.recipe], bt = batches(l), b = basket(l, st.shop);
+    const stat = l.shopped ? `Bought ${dm(l.boughtAt)}${bt ? ` · first to run out: ${esc(joinAnd(bt.first))}` : ""}` : bt ? `These packs make it ${bt.m} times` : "";
     return `<button class="rcard" data-list="${l.id}"><div class="rimg">${pancakeSVG}</div><div class="tx"><span class="kick2">Recipe · ${R.serves.toLowerCase()}</span><b>${esc(l.t)}</b><small>${words(l).length} ingredients · ${R.swaps[0][1]} for ${R.swaps[0][0]}</small>${stat ? `<span class="st">${stat}</span>` : ""}</div>${b ? `<span class="badge"><i class="ring"></i>${b}</span>` : ""}</button>`;
   };
   const now = st.lists.filter((l) => !l.prev && !l.recipe && match(l)), prev = st.lists.filter((l) => l.prev && match(l)), recs = st.lists.filter((l) => l.recipe && match(l));
@@ -945,19 +966,20 @@ function renderDoneList(l) {
     return itemHTML(r, i);
   }).join("");
   let rhead = "", go = `<div class="go"><button class="btn primary" id="startBtn">Start shopping <span>≈ ${chf(total)}</span></button></div>`;
-  if (l.recipe) {
-    const R = RECIPES[l.recipe], bt = batches(l), b = basket(l, st.shop), tg = recipeTarget(), nNew = tg ? ws.filter((w) => !onList(tg, w)).length : 0;
+  if (l.recipe) { // a recipe is a list of its own: shop it on its own, again whenever you like
+    const R = RECIPES[l.recipe], bt = batches(l), b = basket(l, st.shop);
     rhead = `<div class="rhead"><div class="rtop"><div class="rimg">${pancakeSVG}</div><div class="tx"><span class="kick2">Suggested by Point · recipe</span><div class="rsub">${R.serves} · ${R.makes} ${R.unit} a batch</div></div>${b ? `<span class="badge"><i class="ring"></i>${b}</span>` : ""}</div>
       <div class="swaps">${R.swaps.map(([a, c]) => `<span class="swap"><s>${a}</s> → ${c}</span>`).join("")}</div>
-      ${bt ? `<div class="batches"><b>${bt.m}×</b><div><strong>These packs make it ${bt.m} times</strong><small>${bt.m * R.makes} ${R.unit} in all. First to run out: ${esc(joinAnd(bt.first))}. The rest is left for next time.</small></div></div>` : ""}
+      ${bt ? `<div class="batches"><b>${bt.m}×</b><div><strong>These packs make it ${bt.m} times</strong><small>${l.shopped ? `Bought ${dm(l.boughtAt)} ` : ""}${bt.m * R.makes} ${R.unit} in all. First to run out: ${esc(joinAnd(bt.first))}, so next time Point suggests just those.</small></div></div>` : ""}
       <details class="how"><summary>How to make it</summary><ol>${R.how.map((s) => `<li>${s}</li>`).join("")}</ol></details></div>`;
-    go = `<div class="go">${tg ? (nNew ? `<button class="btn primary" id="addRecipe">Add to ${esc(tg.t)} <span>${nNew} ingredients</span></button>` : `<button class="btn soft center" data-list="${tg.id}">✓ All on ${esc(tg.t)}</button>`) : ""}
-      <button class="${tg ? "alone" : "btn primary"}" id="startBtn">${tg ? `or shop it on its own · ≈ ${chf(total)}` : `Start shopping <span>≈ ${chf(total)}</span>`}</button></div>`;
+    if (l.shopped) go = go.replace("Start shopping", "Shop it again");
   }
+  const rs = restock(l);
   $("noteBody").innerHTML = `<h1>${esc(l.t)}</h1>${rhead}
     <div class="meta"><button class="pill" data-shopbtn>${pin}<span class="shopname"></span></button><span class="chip">${f} of ${ws.length} found</span><button class="pill" data-fam aria-label="${fam(l) ? "Family on this list" : "Share with family"}">${fam(l) ? avs(fam(l)) + "Family" : shareIcon + "Share"}</button></div>
     <div class="items">${rows || `<p class="whint">This list is empty. Tap Edit to write.</p>`}</div>
-    ${l.shopped || !f ? "" : go}
+    ${rs ? restockHTML(rs) : ""}
+    ${(l.shopped && !l.recipe) || !f ? "" : go}
     <p class="note">Illustrative data, not measured. Point is not affiliated with Migros. Photos: <a href="https://github.com/steinerchristof/point-prototype/blob/main/CREDITS.md" target="_blank" rel="noopener" style="color:inherit">Wikimedia Commons</a>.</p>`;
   setShopNames();
   document.querySelectorAll(".ihead").forEach((h) => (h.onclick = () => toggleItem(+h.dataset.i)));
@@ -966,8 +988,7 @@ function renderDoneList(l) {
   document.querySelectorAll("[data-where]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); show("shops"); }));
   document.querySelectorAll("#noteBody [data-fam]").forEach((b) => (b.onclick = openFamily));
   if ($("startBtn")) $("startBtn").onclick = startShopping;
-  if ($("addRecipe")) $("addRecipe").onclick = addRecipe;
-  document.querySelectorAll("#noteBody .go [data-list]").forEach((b) => (b.onclick = () => openList(b.dataset.list, "done")));
+  document.querySelectorAll("[data-radd]").forEach((b) => (b.onclick = () => addRestock(b.dataset.radd)));
   const card = document.querySelector(".card .sring"); if (card) fillRing(card, 900);
 }
 function itemHTML(r, i) {
@@ -1147,7 +1168,7 @@ function tickHTML(x, sub, free) {
 $("scanBtn").onclick = openScan; $("scanBar").onclick = openScan;
 function tick(i) { st.ticked.has(i) ? st.ticked.delete(i) : st.ticked.add(i); const y = $("shop").scrollTop; renderShop(); $("shop").scrollTop = y; if (st.ticked.size === shopItems().length) setTimeout(finish, 800); }
 $("endBtn").onclick = () => finish();
-function finish() { if ($("done").classList.contains("on") || !$("shop").classList.contains("on")) return; curList().shopped = true; show("done"); }
+function finish() { if ($("done").classList.contains("on") || !$("shop").classList.contains("on")) return; const l = curList(); l.shopped = true; if (l.recipe) l.boughtAt = Date.now(); show("done"); }
 
 // ===================== 5 · Shop done =====================
 function renderDone() {
@@ -1196,26 +1217,28 @@ const lastLine = () => [...document.querySelectorAll("#lines input")].pop();
 const q = (sel) => document.querySelector(sel);
 function resetDemo() {
   closeSheets(); outro.classList.remove("on"); toastEl.classList.remove("on"); scanTok++; st.shop = "nm"; st.pick = {}; $("lq").value = "";
-  st.lists = st.lists.filter((l) => l.id === "f" || l.id === "r" || l.id === "l"); st.lists.forEach((l) => { if (l.id !== "l") l.shopped = false; if (l.id === "r") delete l.added; });
+  st.lists = st.lists.filter((l) => l.id === "f" || l.id === "r" || l.id === "l"); st.lists.forEach((l) => { if (l.id === "f") l.shopped = false; if (l.id === "r") { l.shopped = true; l.boughtAt = Date.now() - 7 * 864e5; } });
   hist.length = 1; show("lists", false);
 }
 // Each step ends on a screen worth talking about. The pause after it is the auto-play dwell.
 const STEPS = [
+  { t: "A recipe Point suggested, as a list of its own", dwell: 3800, run: async () => { await tap(q('[data-list="r"]')); } },
   { t: "Write the list, as in Notes", dwell: 1800, run: async () => {
+    if ($("note").classList.contains("on")) { await tap(q("#note [data-back]"), 450); await sleep(700); }
     await tap($("compose"));
     await sleep(450); await type($("titleIn"), "Weekly shop", 80); await sleep(250); enter($("titleIn")); await sleep(300);
     for (const w of ["pasta", "oranges", "apples", "milk", "coffee", "olive oil"]) { await type(lastLine(), w, 105); await sleep(260); if (w !== "olive oil") enter(lastLine()); }
   } },
-  { t: "Done: one answer under every word", dwell: 3800, run: async () => { await tap($("modeBtn")); } },
-  { t: "Share it with the family: Sofia adds yoghurt from her phone", dwell: 3600, run: async () => {
+  { t: "Done: one answer under every word", dwell: 3400, run: async () => { await tap($("modeBtn")); } },
+  { t: "Oat pancakes again? Only what runs out: bananas and yoghurt", dwell: 2600, run: async () => {
+    q("#noteBody .again").scrollIntoView({ block: "center", behavior: "smooth" }); await sleep(1200);
+    await tap(q('[data-radd="bananas"]'), 500); await sleep(500);
+    await tap(q('[data-radd="yoghurt"]'), 400); await sleep(400);
+  } },
+  { t: "Share it with the family: Sofia adds tomatoes from her phone", dwell: 3600, run: async () => {
     await tap(q("#noteBody [data-fam]")); await sleep(1300);
-    await tap($("shareGo")); await sleep(3700); // Sofia's yoghurt arrives live
+    await tap($("shareGo")); await sleep(3700); // Sofia's tomatoes arrive live
   } },
-  { t: "Point suggests a recipe: oat pancakes, 3 times from these packs", dwell: 3800, run: async () => {
-    await tap(q("#note [data-back]"), 450); await sleep(1000);
-    await tap(q('[data-list="r"]'));
-  } },
-  { t: "Add its ingredients to the weekly shop", dwell: 3200, run: async () => { await tap($("addRecipe")); await sleep(400); } },
   { t: "Tap pasta: product, score, place in the shop", dwell: 4000, run: async () => { await tap(q('.ihead[data-i="0"]')); } },
   { t: "Other pastas, ranked by Km 0: pick the Swiss one", dwell: 2600, run: async () => {
     await tap(q("[data-others]")); await sleep(1600);
@@ -1244,7 +1267,7 @@ const STEPS = [
     await tap(q("#srBody .btn.primary")); await sleep(500);
   } },
   { t: "Tick off, like a checklist", dwell: 6000, run: async () => {
-    for (const w of ["oranges", "apples", "bananas", "milk", "yoghurt", "oat milk", "coffee", "pasta", "oat flour", "baking soda", "baking powder", "olives", "vanilla protein powder", "olive oil"]) { await tap(q(`[data-w="${w}"]`), 250); await sleep(200); }
+    for (const w of ["oranges", "apples", "bananas", "tomatoes", "milk", "yoghurt", "coffee", "pasta", "olives", "olive oil"]) { await tap(q(`[data-w="${w}"]`), 300); await sleep(260); }
     await sleep(1000); // "Shop done" opens by itself after the last tick
   } },
   { t: "Right to the point.", dwell: 3000, run: async () => { outro.classList.add("on"); } },
