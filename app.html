@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F6F8FC">
 <title>Point App</title>
-<meta name="description" content="Point app prototype: write your shopping list as always. Point puts the best-scoring verified product under every word and shows you where it is in the shop.">
+<meta name="description" content="Point app prototype: write your shopping list as always. Point puts the best-scoring verified product under every word, shows you where it is in the shop, and suggests sustainable recipes as ready-made lists.">
 <script>
   // On a desktop the app is always shown inside the iPhone frame (index.html).
   if (/embed/.test(location.search)) {
@@ -335,6 +335,35 @@
   .btn:disabled { opacity: .45; box-shadow: none; }
   .opt .add { flex: none; height: 32px; padding: 0 12px; border-radius: 16px; background: var(--blue-soft); color: var(--blue); font-size: 13px; font-weight: 700; }
   .opt .tx i { display: block; font-style: normal; font-size: 12px; color: var(--ink3); }
+  /* recipes Point suggests */
+  .rcard { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid #E4DEFF; box-shadow: 0 1px 2px rgba(11,18,32,.04); margin-bottom: 20px; }
+  .rimg { width: 52px; height: 52px; border-radius: 12px; flex: none; display: grid; place-items: center; background: linear-gradient(135deg, #EEF3FF, #F3EEFF); }
+  .rimg svg { width: 40px; height: 40px; }
+  .rcard .tx, .rtop .tx { flex: 1; min-width: 0; }
+  .kick2 { display: block; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--violet); font-weight: 700; }
+  .rcard b { display: block; font-size: 15px; font-weight: 600; margin-top: 1px; }
+  .rcard small { display: block; font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rcard .st { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 600; color: var(--blue); }
+  .rhead { background: var(--card); border-radius: 16px; padding: 14px; margin: 0 0 12px; box-shadow: 0 1px 2px rgba(11,18,32,.04); }
+  .rtop { display: flex; align-items: center; gap: 12px; }
+  .rsub { font-size: 13.5px; color: var(--ink2); margin-top: 2px; }
+  .swaps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .swap { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 14px; background: var(--blue-soft); color: var(--blue); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .swap s { color: var(--ink3); font-weight: 500; }
+  .batches { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: #F2F5FA; }
+  .batches > b { font-size: 26px; font-weight: 700; color: var(--violet); font-variant-numeric: tabular-nums; flex: none; min-width: 42px; text-align: center; }
+  .batches strong { display: block; font-size: 14px; }
+  .batches small { display: block; font-size: 12.5px; color: var(--ink2); line-height: 1.4; }
+  .how { margin-top: 8px; font-size: 13.5px; }
+  .how summary { cursor: pointer; color: var(--blue); font-weight: 600; list-style: none; padding: 6px 0 2px; }
+  .how summary::-webkit-details-marker { display: none; }
+  .how summary::after { content: " ›"; }
+  .how[open] summary::after { content: ""; }
+  .how ol { margin: 6px 0 2px; padding-left: 20px; color: var(--ink2); line-height: 1.5; }
+  .how li + li { margin-top: 4px; }
+  .alone { display: block; margin: 6px auto 0; min-height: 32px; padding: 0 10px; color: var(--blue); font-size: 13.5px; font-weight: 600; }
+  .from { color: var(--violet); font-weight: 600; }
+  .toast .ring { width: 24px; height: 24px; }
   @media (max-width: 340px) { :root { --pad: 16px; } h1 { font-size: 27px; } .twobtn { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -482,8 +511,8 @@ const DATA = {
     { b: "Oliva d'Oro", n: "Extra virgin olive oil", img: null, pk: "1 l, plastic", pr: 7.50, d: null, h: "bottom shelf", shops: ALL },
   ]},
   yoghurt: { sect: "dairy", spot: "fridge 2", items: [
-    { b: "Alpe Säntis", n: "Natural yoghurt, glass jar", img: null, pk: "500 g", pr: 2.40, d: { energy: 78, water: 70, pack: 92, transport: 92 }, why: [["Transport", "30 km, Appenzell farms"], ["Packaging", "returnable glass jar"], ["Energy", "78% renewable"]], h: "middle shelf", shops: ALL },
-    { b: "Cremosa", n: "Greek-style yoghurt", img: null, pk: "4 × 125 g, plastic", pr: 3.20, d: { energy: 66, water: 58, pack: 42, transport: 50 }, why: [["Packaging", "four plastic pots"], ["Transport", "1,200 km, by truck"], ["Water", "irrigated feed"]], h: "bottom shelf", shops: ALL },
+    { b: "Alpe Säntis", n: "Natural yoghurt, glass jar", img: null, pk: "500 g", qty: 500, pr: 2.40, d: { energy: 78, water: 70, pack: 92, transport: 92 }, why: [["Transport", "30 km, Appenzell farms"], ["Packaging", "returnable glass jar"], ["Energy", "78% renewable"]], h: "middle shelf", shops: ALL },
+    { b: "Cremosa", n: "Greek-style yoghurt", img: null, pk: "4 × 125 g, plastic", qty: 500, pr: 3.20, d: { energy: 66, water: 58, pack: 42, transport: 50 }, why: [["Packaging", "four plastic pots"], ["Transport", "1,200 km, by truck"], ["Water", "irrigated feed"]], h: "bottom shelf", shops: ALL },
   ]},
   // Nine jars on one shelf: the barcode scan shows where each one ranks.
   olives: { sect: "stand2", spot: "jars", items: [
@@ -497,17 +526,59 @@ const DATA = {
     { b: "Delta Verde", n: "Black olives, sliced", img: null, pk: "150 g, can", pr: 1.95, d: { energy: 48, water: 44, pack: 48, transport: 40 }, why: [["Energy", "oxidised with heat"], ["Packaging", "tin can"], ["Transport", "by ship, from Egypt"]], h: "bottom shelf", shops: ALL },
     { b: "Olivio", n: "Olives in brine, pot", img: null, pk: "300 g, plastic", pr: 2.20, d: { energy: 44, water: 40, pack: 30, transport: 42 }, why: [["Packaging", "plastic pot and lid"], ["Transport", "by ship, from Morocco"], ["Water", "irrigated groves"]], h: "chilled shelf", shops: ALL },
   ]},
+  // Ingredients of the recipe Point suggests (oat pancakes). qty = what one pack holds, in the recipe's unit.
+  "oat drink": { sect: "dairy", spot: "fridge 1, plant drinks", items: [
+    { b: "Avenalp", n: "Oat drink, Swiss oats", img: null, pk: "1 l, carton", qty: 1000, pr: 2.60, d: { energy: 84, water: 92, pack: 76, transport: 92 }, why: [["Transport", "Swiss oats, made in Thurgau"], ["Water", "rain-fed oats, very little water"], ["Packaging", "carton, recyclable"]], h: "middle shelf", shops: ALL },
+    { b: "Nordhavre", n: "Oat drink", img: "milk-b.jpg", pk: "1 l, carton", qty: 1000, pr: 2.95, d: { energy: 81, water: 89, pack: 76, transport: 40 }, why: [["Water", "very low water use"], ["Transport", "1,700 km, from Sweden"], ["Packaging", "carton"]], h: "middle shelf", shops: ALL },
+  ]},
+  "oat flour": { sect: "stand1", spot: "baking, right side", items: [
+    { b: "Avenalp", n: "Oat flour, Swiss oats", img: null, pk: "500 g, paper", qty: 500, pr: 3.20, d: { energy: 86, water: 90, pack: 86, transport: 94 }, why: [["Transport", "grown and milled in eastern Switzerland"], ["Packaging", "paper bag"], ["Water", "rain-fed oats"]], h: "eye level", shops: ALL },
+    { b: "Suomi Grain", n: "Oat flour, organic", img: null, pk: "1 kg, plastic", qty: 1000, pr: 4.90, d: { energy: 80, water: 88, pack: 54, transport: 50 }, why: [["Transport", "2,300 km, from Finland"], ["Packaging", "plastic bag"], ["Water", "rain-fed oats"]], h: "bottom shelf", shops: ALL },
+  ]},
+  bananas: { sect: "fruit", spot: "banana stand", items: [
+    { b: "Finca Verde", n: "Bananas, organic, fair trade", img: null, pk: "1 kg, loose, about 6", qty: 6, pr: 2.90, d: { energy: 82, water: 74, pack: 97, transport: 38 }, why: [["Packaging", "loose, no plastic"], ["Water", "rain-fed farms"], ["Transport", "10,000 km, by ship from Ecuador"]], h: "top hooks", shops: ALL },
+    { b: "Costa Dorada", n: "Bananas", img: null, pk: "1 kg bag, about 6", qty: 6, pr: 2.20, d: { energy: 70, water: 58, pack: 56, transport: 34 }, why: [["Transport", "9,500 km, by ship"], ["Water", "irrigated plantations"], ["Packaging", "plastic bag"]], h: "bottom crate", shops: ALL },
+  ]},
+  "baking soda": { sect: "stand1", spot: "baking, right side", items: [
+    { b: "Alpina Back", n: "Baking soda", img: null, pk: "250 g, cardboard", qty: 250, pr: 1.95, d: { energy: 80, water: 88, pack: 90, transport: 86 }, why: [["Packaging", "cardboard box"], ["Transport", "made in Switzerland, 120 km"], ["Water", "dry process"]], h: "top shelf", shops: ALL },
+    { b: "Clearsoda", n: "Baking soda, tub", img: null, pk: "500 g, plastic", qty: 500, pr: 2.90, d: { energy: 70, water: 84, pack: 46, transport: 60 }, why: [["Packaging", "plastic tub"], ["Transport", "900 km, by truck"], ["Energy", "70% renewable"]], h: "bottom shelf", shops: ALL },
+  ]},
+  "baking powder": { sect: "stand1", spot: "baking, right side", items: [
+    { b: "Alpina Back", n: "Baking powder, phosphate-free", img: null, pk: "5 × 17 g, paper", qty: 85, pr: 1.20, d: { energy: 82, water: 90, pack: 88, transport: 86 }, why: [["Packaging", "paper sachets"], ["Transport", "made in Switzerland, 120 km"], ["Water", "dry process"]], h: "top shelf", shops: ALL },
+    { b: "Fermo", n: "Baking powder", img: null, pk: "100 g, plastic", qty: 100, pr: 1.60, d: { energy: 68, water: 82, pack: 50, transport: 62 }, why: [["Packaging", "plastic tub"], ["Transport", "800 km, by truck"], ["Energy", "68% renewable"]], h: "eye level", shops: ALL },
+  ]},
+  "protein powder": { sect: "stand2", spot: "sports nutrition", items: [
+    // Whey is what is left over when cheese is made: a by-product put to use, not extra milk.
+    { b: "Alpe Säntis", n: "Whey protein, vanilla", img: null, pk: "450 g, paper pouch", qty: 450, pr: 22.90, d: { energy: 78, water: 84, pack: 74, transport: 92 }, why: [["Water", "whey left over from Appenzell cheese making"], ["Transport", "Swiss cheese dairies, 60 km"], ["Packaging", "paper pouch"]], h: "eye level", shops: ALL },
+    { b: "Ironwhey", n: "Whey protein, vanilla", img: null, pk: "500 g, plastic tub", qty: 500, pr: 29.90, d: { energy: 52, water: 66, pack: 44, transport: 46 }, why: [["Transport", "1,900 km, by truck and ferry"], ["Packaging", "plastic tub and scoop"], ["Energy", "spray-dried, 52% renewable"]], h: "top shelf", shops: ALL },
+  ]},
 };
+// Recipes Point suggests, next to your own lists. amt = [amount for one batch, in the pack's unit, as written]. Illustrative.
+const RECIPES = {
+  pancakes: {
+    t: "Oat pancakes", serves: "For 2", makes: 8, unit: "pancakes",
+    swaps: [["eggs", "banana"], ["cow’s milk", "oat drink"]],
+    amt: { "oat drink": [250, "250 ml"], "oat flour": [120, "120 g"], bananas: [2, "2 bananas"], "baking soda": [3, "½ tsp"], "baking powder": [5, "1 tsp"], yoghurt: [150, "150 g"], "protein powder": [30, "30 g"] },
+    how: ["Mix the dry ingredients: oat flour, protein powder, baking powder and baking soda.", "Mash the bananas, then stir in the oat drink and the yoghurt.", "Mix the two together and wait 5 minutes for the magic: the baking soda meets the yoghurt’s acid and the batter puffs up.", "Cook small pancakes in a hot non-stick pan, about 2 minutes a side."],
+  },
+};
+const pancakeSVG = `<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="32" rx="16" ry="3.6" fill="#DCE2EC"/><ellipse cx="20" cy="29.5" rx="14.5" ry="4" fill="#E2A75E"/><ellipse cx="20" cy="25.6" rx="14" ry="4" fill="#F0C27F"/><ellipse cx="20" cy="21.7" rx="13.5" ry="3.9" fill="#E2A75E"/><ellipse cx="20" cy="18" rx="13" ry="3.8" fill="#F4CF92"/><circle cx="14.8" cy="16.6" r="2.7" fill="#FFF3C4" stroke="#E8CF7E" stroke-width=".8"/><circle cx="20.4" cy="15.2" r="2.7" fill="#FFF3C4" stroke="#E8CF7E" stroke-width=".8"/><circle cx="25.6" cy="16.8" r="2.5" fill="#FFF3C4" stroke="#E8CF7E" stroke-width=".8"/></svg>`;
 const SYN = {
   pasta: ["pasta", "spaghetti", "penne", "tagliatelle", "noodles", "nudeln", "teigwaren", "pates", "fusilli"],
   oranges: ["oranges", "orange", "orangen", "arance", "blood oranges"],
   apples: ["apples", "apple", "apfel", "aepfel", "mele", "pommes"],
-  milk: ["milk", "milch", "latte", "lait", "oat milk", "oat drink"],
+  milk: ["milk", "milch", "latte", "lait"],
   coffee: ["coffee", "kaffee", "caffe", "cafe", "espresso", "coffee beans"],
   tomatoes: ["tomatoes", "tomato", "tomaten", "pomodori", "tomates"],
   "olive oil": ["olive oil", "oil", "olivenoel", "olivenol", "olio", "huile d'olive"],
   yoghurt: ["yoghurt", "yogurt", "joghurt", "jogurt", "yaourt", "yogurt naturale"],
   olives: ["olives", "olive", "oliven", "olive verdi", "olive nere", "olives vertes"],
+  "oat drink": ["oat milk", "oat drink", "hafermilch", "haferdrink", "latte d'avena", "boisson d'avoine"],
+  "oat flour": ["oat flour", "oat flower", "hafermehl", "farina d'avena", "farine d'avoine"],
+  bananas: ["bananas", "banana", "bananen", "banane"],
+  "baking soda": ["baking soda", "bicarbonate", "bicarbonate of soda", "natron", "bicarbonato"],
+  "baking powder": ["baking powder", "backpulver", "lievito per dolci", "levure chimique"],
+  "protein powder": ["protein powder", "vanilla protein powder", "protein", "proteinpulver", "whey", "whey protein"],
 };
 const USUAL = 74; // illustrative: average score of this user's usual basket
 // The family that shares a list. Everyone can add, pick and tick; changes appear on every phone at once.
@@ -536,6 +607,8 @@ const st = {
   lists: [
     { id: "w", t: "Weekly shop", w: ["pasta", "oranges", "apples", "milk", "coffee", "olive oil"], when: "Today" },
     { id: "f", t: "Friday dinner", w: ["pasta", "tomatoes", "olive oil"], when: "Today", share: ["ma", "so"], by: { tomatoes: "ma" }, log: [{ m: "ma", t: "added tomatoes", at: Date.now() - 42 * 60000 }] },
+    // Suggested by Point: a sustainable recipe, written as a list like any other
+    { id: "r", t: "Oat pancakes", w: ["oat milk", "oat flour", "bananas", "baking soda", "baking powder", "yoghurt", "vanilla protein powder"], when: "Suggested", recipe: "pancakes" },
     { id: "l", t: "Last week", w: ["apples", "milk", "tomatoes", "coffee"], when: "30.10.", shopped: true, prev: true },
   ],
   pick: {}, // "listId:category" -> chosen product name
@@ -569,6 +642,43 @@ const curList = () => st.lists.find((l) => l.id === st.cur);
 const words = (l) => l.w.map((x) => x.trim()).filter(Boolean);
 const found = (l, sid) => words(l).filter((w) => resolve(w, l.id, sid).state === "ready").length;
 
+// ===================== Recipes Point suggests =====================
+// How many times the packs Point picked make the recipe: the ingredient that runs out first decides.
+function packTimes(l, r) {
+  const a = l.recipe && r.state === "ready" && RECIPES[l.recipe].amt[r.cat];
+  return a && r.pick.qty ? Math.floor(r.pick.qty / a[0] + 1e-9) : null;
+}
+function batches(l) {
+  const per = words(l).map((w) => ({ w, n: packTimes(l, resolve(w, l.id)) })).filter((x) => x.n !== null);
+  if (!per.length) return null;
+  const m = Math.min(...per.map((x) => x.n));
+  return { m, first: per.filter((x) => x.n === m).map((x) => x.w) };
+}
+// The list a recipe is added to: your most recent list still to shop.
+const recipeTarget = () => st.lists.find((x) => !x.prev && !x.recipe && !x.shopped && words(x).length);
+const onList = (tg, w) => words(tg).some((x) => norm(x) === norm(w) || (catOf(w) && catOf(x) === catOf(w)));
+const joinAnd = (a) => (a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]);
+// Under each word: how much one batch uses and how often the pack lasts; on your own list, which recipe it is for.
+function useLine(l, r) {
+  const n = l && packTimes(l, r);
+  if (n !== null && n !== undefined && n !== false) return ` · ${RECIPES[l.recipe].amt[r.cat][1]} each time · pack lasts ${n > 12 ? "12+" : n}`;
+  const fr = l && l.from && l.from[norm(r.word)];
+  return fr ? ` · <span class="from">for ${esc(fr)}</span>` : "";
+}
+function addRecipe() {
+  const l = curList(), tg = recipeTarget(); if (!l || !tg) return;
+  const add = words(l).filter((w) => !onList(tg, w)), had = words(l).filter((w) => onList(tg, w));
+  tg.w = [...words(tg), ...add]; tg.from = tg.from || {};
+  add.forEach((w) => {
+    tg.from[norm(w)] = l.t;
+    const c = catOf(w); if (c && st.pick[l.id + ":" + c]) st.pick[tg.id + ":" + c] = st.pick[l.id + ":" + c]; // your picks come along
+  });
+  l.added = tg.id; logIt(tg, "me", `added ${add.length} ingredients for ${l.t.toLowerCase()}`);
+  flashWord = new Set(add.map(norm)); openList(tg.id, "done"); flashWord = null;
+  const first = document.querySelector("#noteBody .item.new"); if (first) setTimeout(() => first.scrollIntoView({ block: "center", behavior: "smooth" }), 160);
+  toast(`<i class="ring"></i><div>Added <b>${add.length} ingredients</b> to ${esc(tg.t)}<small>For ${esc(l.t)}${had.length ? ` · ${esc(joinAnd(had))} ${had.length === 1 ? "was" : "were"} already on it` : ""}${fam(tg) ? ` · ${names(tg.share)} see them now` : ""}</small></div>`, 3800);
+}
+
 function sring(v, size, track = "#E7ECF3") {
   const sw = size > 100 ? 11 : size > 70 ? 7 : 5, r = size / 2 - sw / 2 - 1, c = 2 * Math.PI * r;
   const id = "g" + Math.random().toString(36).slice(2, 8);
@@ -601,7 +711,8 @@ function ago(t) { const m = Math.round((Date.now() - t) / 60000); return m < 1 ?
 function logIt(l, m, t) { (l.log = l.log || []).unshift({ m, t, at: Date.now() }); }
 const toastEl = document.createElement("div"); toastEl.className = "toast"; toastEl.setAttribute("role", "status"); document.body.appendChild(toastEl);
 function toast(html, ms = 3400) { toastEl.innerHTML = html; toastEl.classList.add("on"); clearTimeout(toastEl._t); toastEl._t = setTimeout(() => toastEl.classList.remove("on"), ms); }
-let flashWord = null; // the item that just arrived glows once
+let flashWord = null; // the item that just arrived glows once (a Set when several arrive together)
+const isFlash = (w) => (flashWord instanceof Set ? flashWord.has(norm(w)) : flashWord === norm(w));
 function refresh() {
   const on = document.querySelector(".screen.on"); if (!on) return;
   const y = on.scrollTop, r = { lists: renderLists, note: renderNote, shop: renderShop }[on.id];
@@ -746,11 +857,18 @@ function renderLists() {
     const stat = (l.shopped ? `<span class="st grey">Shopped · ${n} items</span>` : n === 0 ? `<span class="st grey"><i class="ring looking"></i>Writing…</span>` : `<span class="st"><i class="ring"></i>${f} of ${n} found</span>`).replace(/<\/span>$/, famTag + "</span>");
     return `<button class="lrow" data-list="${l.id}"><div><b>${esc(l.t || "New list")}</b><small>${l.when} ${esc(words(l).join(", "))}</small>${stat}</div>${chev}</button>`;
   };
-  const now = st.lists.filter((l) => !l.prev && match(l)), prev = st.lists.filter((l) => l.prev && match(l));
+  // a recipe Point suggests sits next to your own lists, as a list you can open, shop or add to yours
+  const rrow = (l) => {
+    const R = RECIPES[l.recipe], bt = batches(l), b = basket(l, st.shop), tg = l.added && st.lists.find((x) => x.id === l.added);
+    const stat = l.shopped ? "Shopped" : tg ? `✓ Added to ${esc(tg.t)}` : bt ? `These packs make it ${bt.m} times` : "";
+    return `<button class="rcard" data-list="${l.id}"><div class="rimg">${pancakeSVG}</div><div class="tx"><span class="kick2">Recipe · ${R.serves.toLowerCase()}</span><b>${esc(l.t)}</b><small>${words(l).length} ingredients · ${R.swaps[0][1]} for ${R.swaps[0][0]}</small>${stat ? `<span class="st">${stat}</span>` : ""}</div>${b ? `<span class="badge"><i class="ring"></i>${b}</span>` : ""}</button>`;
+  };
+  const now = st.lists.filter((l) => !l.prev && !l.recipe && match(l)), prev = st.lists.filter((l) => l.prev && match(l)), recs = st.lists.filter((l) => l.recipe && match(l));
   $("listGroups").innerHTML = (now.length ? `<div class="sec">Today</div><div class="group">${now.map(row).join("")}</div>` : "") +
+    (recs.length ? `<div class="sec">Suggested by Point</div>${recs.map(rrow).join("")}` : "") +
     (prev.length ? `<div class="sec">Previous 7 days</div><div class="group">${prev.map(row).join("")}</div>` : "") +
-    (!now.length && !prev.length ? `<p class="hint" style="margin:20px 0">No list matches “${esc($("lq").value)}”.</p>` : "");
-  $("nLists").textContent = st.lists.length + " lists";
+    (!now.length && !prev.length && !recs.length ? `<p class="hint" style="margin:20px 0">No list matches “${esc($("lq").value)}”.</p>` : "");
+  $("nLists").textContent = st.lists.filter((l) => !l.recipe).length + " lists";
   document.querySelectorAll("[data-list]").forEach((b) => (b.onclick = () => openList(b.dataset.list)));
 }
 $("lq").addEventListener("input", renderLists);
@@ -826,10 +944,20 @@ function renderDoneList(l) {
     if (r.state === "ready") { total += r.pick.pr; secs.add(DATA[r.cat].sect); }
     return itemHTML(r, i);
   }).join("");
-  $("noteBody").innerHTML = `<h1>${esc(l.t)}</h1>
+  let rhead = "", go = `<div class="go"><button class="btn primary" id="startBtn">Start shopping <span>≈ ${chf(total)}</span></button></div>`;
+  if (l.recipe) {
+    const R = RECIPES[l.recipe], bt = batches(l), b = basket(l, st.shop), tg = recipeTarget(), nNew = tg ? ws.filter((w) => !onList(tg, w)).length : 0;
+    rhead = `<div class="rhead"><div class="rtop"><div class="rimg">${pancakeSVG}</div><div class="tx"><span class="kick2">Suggested by Point · recipe</span><div class="rsub">${R.serves} · ${R.makes} ${R.unit} a batch</div></div>${b ? `<span class="badge"><i class="ring"></i>${b}</span>` : ""}</div>
+      <div class="swaps">${R.swaps.map(([a, c]) => `<span class="swap"><s>${a}</s> → ${c}</span>`).join("")}</div>
+      ${bt ? `<div class="batches"><b>${bt.m}×</b><div><strong>These packs make it ${bt.m} times</strong><small>${bt.m * R.makes} ${R.unit} in all. First to run out: ${esc(joinAnd(bt.first))}. The rest is left for next time.</small></div></div>` : ""}
+      <details class="how"><summary>How to make it</summary><ol>${R.how.map((s) => `<li>${s}</li>`).join("")}</ol></details></div>`;
+    go = `<div class="go">${tg ? (nNew ? `<button class="btn primary" id="addRecipe">Add to ${esc(tg.t)} <span>${nNew} ingredients</span></button>` : `<button class="btn soft center" data-list="${tg.id}">✓ All on ${esc(tg.t)}</button>`) : ""}
+      <button class="${tg ? "alone" : "btn primary"}" id="startBtn">${tg ? `or shop it on its own · ≈ ${chf(total)}` : `Start shopping <span>≈ ${chf(total)}</span>`}</button></div>`;
+  }
+  $("noteBody").innerHTML = `<h1>${esc(l.t)}</h1>${rhead}
     <div class="meta"><button class="pill" data-shopbtn>${pin}<span class="shopname"></span></button><span class="chip">${f} of ${ws.length} found</span><button class="pill" data-fam aria-label="${fam(l) ? "Family on this list" : "Share with family"}">${fam(l) ? avs(fam(l)) + "Family" : shareIcon + "Share"}</button></div>
     <div class="items">${rows || `<p class="whint">This list is empty. Tap Edit to write.</p>`}</div>
-    ${l.shopped || !f ? "" : `<div class="go"><button class="btn primary" id="startBtn">Start shopping <span>≈ ${chf(total)}</span></button></div>`}
+    ${l.shopped || !f ? "" : go}
     <p class="note">Illustrative data, not measured. Point is not affiliated with Migros. Photos: <a href="https://github.com/steinerchristof/point-prototype/blob/main/CREDITS.md" target="_blank" rel="noopener" style="color:inherit">Wikimedia Commons</a>.</p>`;
   setShopNames();
   document.querySelectorAll(".ihead").forEach((h) => (h.onclick = () => toggleItem(+h.dataset.i)));
@@ -838,11 +966,13 @@ function renderDoneList(l) {
   document.querySelectorAll("[data-where]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); show("shops"); }));
   document.querySelectorAll("#noteBody [data-fam]").forEach((b) => (b.onclick = openFamily));
   if ($("startBtn")) $("startBtn").onclick = startShopping;
+  if ($("addRecipe")) $("addRecipe").onclick = addRecipe;
+  document.querySelectorAll("#noteBody .go [data-list]").forEach((b) => (b.onclick = () => openList(b.dataset.list, "done")));
   const card = document.querySelector(".card .sring"); if (card) fillRing(card, 900);
 }
 function itemHTML(r, i) {
   const open = st.open === i, l = curList(), by = byOf(l, r.word);
-  const cls = (st.open !== null && !open ? "item faded" : "item") + (flashWord === norm(r.word) ? " new" : "");
+  const cls = (st.open !== null && !open ? "item faded" : "item") + (isFlash(r.word) ? " new" : "");
   const byl = fam(l) && by !== "me" ? ` · <span class="by">${av(by, "sm")}added by ${FAM[by].n}</span>` : "";
   if (r.state === "unknown") return `<div class="${cls}"><button class="ihead" data-i="${i}"><div class="irow"><span class="word">${esc(r.word)}</span><i class="ring none"></i></div><div class="pickl">Point doesn’t know this product yet. It stays on your list.</div></button></div>`;
   if (r.state === "none") {
@@ -853,7 +983,7 @@ function itemHTML(r, i) {
   }
   const p = r.pick, s = score(p), sec = SECT[DATA[r.cat].sect];
   const head = `<button class="ihead" data-i="${i}"><div class="irow"><span class="word">${esc(r.word)}</span><span class="badge"><i class="ring"></i>${s}</span></div>
-    ${open ? "" : `<div class="pickl">${esc(p.b)} · ${esc(p.n)}${r.mine ? " · your choice" : ""}</div><div class="place">${sec.t}${byl}</div>`}</button>`;
+    ${open ? "" : `<div class="pickl">${esc(p.b)} · ${esc(p.n)}${r.mine ? " · your choice" : ""}</div><div class="place">${sec.t}${useLine(l, r)}${byl}</div>`}</button>`;
   if (!open) return `<div class="${cls}">${head}</div>`;
   const others = onShelf(r.cat).length - 1;
   return `<div class="${cls}">${head}<div class="card">
@@ -913,7 +1043,8 @@ let proofTok = 0;
 function openProof(cat) {
   const r = resolve(cat2word(cat), st.cur), p = r.pick, s = score(p);
   const next = ranked(cat).filter((x) => x.d && x !== p)[0];
-  const kind = { pasta: "this pasta", oranges: "these oranges", apples: "these apples", milk: "this milk", coffee: "this coffee", tomatoes: "these tomatoes", "olive oil": "this oil", yoghurt: "this yoghurt", olives: "these olives" }[cat];
+  const kind = { pasta: "this pasta", oranges: "these oranges", apples: "these apples", milk: "this milk", coffee: "this coffee", tomatoes: "these tomatoes", "olive oil": "this oil", yoghurt: "this yoghurt", olives: "these olives",
+    "oat drink": "this oat drink", "oat flour": "this flour", bananas: "these bananas", "baking soda": "this baking soda", "baking powder": "this baking powder", "protein powder": "this protein powder" }[cat] || "this product";
   $("proofBody").innerHTML = `<div class="phero"><div class="sring">${sring(s, 84, "rgba(255,255,255,.14)")}</div><div>
       <div class="kick">Why ${esc(kind)}</div><h3>${r.rank === 0 ? `Best of ${r.n} on this shelf` : `Number ${r.rank + 1} of ${r.n} on this shelf`}</h3>
       <p>${next ? `${r.rank === 0 ? "Next best" : "Best"}: ${score(next)} · ${esc(next.b)}` : "The only verified one here"}</p></div></div>
@@ -938,7 +1069,7 @@ let map, layer;
 function km(a, b) { const R = 6371, t = Math.PI / 180, dl = (b[0] - a[0]) * t, dn = (b[1] - a[1]) * t; const h = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * t) * Math.cos(b[0] * t) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
 function basket(l, sid) { const ps = words(l).map((w) => resolve(w, l.id, sid)).filter((r) => r.state === "ready").map((r) => score(r.pick)); return ps.length ? Math.round(ps.reduce((a, b) => a + b, 0) / ps.length) : null; }
 function renderShops() {
-  const l = curList() || st.lists.find((x) => !x.shopped && words(x).length) || st.lists[0];
+  const l = curList() || st.lists.find((x) => !x.shopped && !x.recipe && words(x).length) || st.lists[0];
   const prev = hist[hist.length - 2];
   $("shopsBack").textContent = prev === "note" ? l.t : "Lists";
   const n = words(l).length;
@@ -1010,7 +1141,8 @@ function renderShop() {
 function tickHTML(x, sub, free) {
   const on = st.ticked.has(x.i), l = curList(), by = byOf(l, x.r.word);
   const byl = fam(l) && by !== "me" ? ` · <span class="by">${av(by, "sm")}${FAM[by].n}</span>` : "";
-  return `<button class="tick${on ? " on" : ""}${free ? " free" : ""}${flashWord === norm(x.r.word) ? " new" : ""}" data-tick="${x.i}" data-w="${esc(x.r.word)}" aria-pressed="${on}"><span class="c">${check}</span><div class="tx"><b>${esc(x.r.word)}</b><small>${sub}${byl}</small></div></button>`;
+  const fr = l && l.from && l.from[norm(x.r.word)], frl = fr ? ` · <span class="from">${esc(fr)}</span>` : "";
+  return `<button class="tick${on ? " on" : ""}${free ? " free" : ""}${isFlash(x.r.word) ? " new" : ""}" data-tick="${x.i}" data-w="${esc(x.r.word)}" aria-pressed="${on}"><span class="c">${check}</span><div class="tx"><b>${esc(x.r.word)}</b><small>${sub}${frl}${byl}</small></div></button>`;
 }
 $("scanBtn").onclick = openScan; $("scanBar").onclick = openScan;
 function tick(i) { st.ticked.has(i) ? st.ticked.delete(i) : st.ticked.add(i); const y = $("shop").scrollTop; renderShop(); $("shop").scrollTop = y; if (st.ticked.size === shopItems().length) setTimeout(finish, 800); }
@@ -1044,7 +1176,7 @@ $("again").onclick = () => {
 };
 
 // ===================== Demo =====================
-// D (or "Play demo"): plays by itself, about 70 s.
+// D (or "Play demo"): plays by itself, about 130 s.
 // → / PageDown / N (or a presentation clicker): one step at a time, at the presenter's pace.
 const PACE = 1.0; // higher = slower
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms * PACE));
@@ -1064,7 +1196,7 @@ const lastLine = () => [...document.querySelectorAll("#lines input")].pop();
 const q = (sel) => document.querySelector(sel);
 function resetDemo() {
   closeSheets(); outro.classList.remove("on"); toastEl.classList.remove("on"); scanTok++; st.shop = "nm"; st.pick = {}; $("lq").value = "";
-  st.lists = st.lists.filter((l) => l.id === "f" || l.id === "l"); st.lists.forEach((l) => l.id === "f" && (l.shopped = false));
+  st.lists = st.lists.filter((l) => l.id === "f" || l.id === "r" || l.id === "l"); st.lists.forEach((l) => { if (l.id !== "l") l.shopped = false; if (l.id === "r") delete l.added; });
   hist.length = 1; show("lists", false);
 }
 // Each step ends on a screen worth talking about. The pause after it is the auto-play dwell.
@@ -1079,6 +1211,11 @@ const STEPS = [
     await tap(q("#noteBody [data-fam]")); await sleep(1300);
     await tap($("shareGo")); await sleep(3700); // Sofia's yoghurt arrives live
   } },
+  { t: "Point suggests a recipe: oat pancakes, 3 times from these packs", dwell: 3800, run: async () => {
+    await tap(q("#note [data-back]"), 450); await sleep(1000);
+    await tap(q('[data-list="r"]'));
+  } },
+  { t: "Add its ingredients to the weekly shop", dwell: 3200, run: async () => { await tap($("addRecipe")); await sleep(400); } },
   { t: "Tap pasta: product, score, place in the shop", dwell: 4000, run: async () => { await tap(q('.ihead[data-i="0"]')); } },
   { t: "Other pastas, ranked by Km 0: pick the Swiss one", dwell: 2600, run: async () => {
     await tap(q("[data-others]")); await sleep(1600);
@@ -1107,7 +1244,7 @@ const STEPS = [
     await tap(q("#srBody .btn.primary")); await sleep(500);
   } },
   { t: "Tick off, like a checklist", dwell: 6000, run: async () => {
-    for (const w of ["oranges", "apples", "milk", "yoghurt", "coffee", "pasta", "olives", "olive oil"]) { await tap(q(`[data-w="${w}"]`), 330); await sleep(320); }
+    for (const w of ["oranges", "apples", "bananas", "milk", "yoghurt", "oat milk", "coffee", "pasta", "oat flour", "baking soda", "baking powder", "olives", "vanilla protein powder", "olive oil"]) { await tap(q(`[data-w="${w}"]`), 250); await sleep(200); }
     await sleep(1000); // "Shop done" opens by itself after the last tick
   } },
   { t: "Right to the point.", dwell: 3000, run: async () => { outro.classList.add("on"); } },
@@ -1148,6 +1285,7 @@ setShopNames(); renderLists();
 (function () {
   const h = location.hash.slice(1); if (!h) return;
   if (h === "demo") { setTimeout(demo, 800); return; }
+  if (h === "recipe") { openList("r"); return; }
   if (!["list", "write", "card", "others", "proof", "shops", "shop", "done", "family", "scan", "scanned"].includes(h)) return;
   openList("w", h === "write" ? "write" : "done");
   if (h === "family") openFamily();
