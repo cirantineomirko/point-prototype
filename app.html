@@ -364,7 +364,8 @@
   .from { color: var(--violet); font-weight: 600; }
   /* "again?": a recipe's missing items at the end of your list, written like the list itself */
   .again { margin-top: 18px; }
-  .again .ahead { font-size: 15px; font-weight: 700; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  .again .ahead { font-size: 15px; font-weight: 700; color: var(--violet); padding-bottom: 8px; border-bottom: 1px solid var(--line); } /* violet = what Point suggests, as on "for Oat pancakes" */
+  .again .ahead small { display: block; font-size: 12.5px; font-weight: 400; color: var(--ink3); line-height: 1.4; margin-top: 2px; }
   .arow { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
   .arow .tx { flex: 1; min-width: 0; }
   .arow .word { display: block; color: #8C96A8; }
@@ -676,11 +677,13 @@ function restock(l) {
   const rows = words(rl).map((w) => { const r = resolve(w, rl.id), a = R.amt[r.cat]; return r.state === "ready" && a && r.pick.qty ? { w, r, a, left: r.pick.qty - bt.m * a[0] } : null; }).filter(Boolean);
   const need = rows.filter((x) => x.left < x.a[0] - 1e-9);
   const miss = need.filter((x) => !onList(l, x.w));
-  return miss.length ? { rl, miss } : null;
+  const home = rows.filter((x) => { const n = Math.floor(x.left / x.a[0] + 1e-9); return n >= 1 && n <= 2; }).map((x) => x.w);
+  return miss.length ? { rl, miss, home } : null;
 }
 function restockHTML(rs) {
   const plus = `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
-  return `<div class="again"><div class="ahead">${esc(rs.rl.t)} again?</div>${rs.miss.map((x) => `<div class="arow"><div class="tx"><span class="word">${esc(x.w)}</span><div class="pickl">${esc(x.r.pick.b)} · ${esc(x.r.pick.n)}</div></div><button class="plus" data-radd="${esc(x.w)}" aria-label="Add ${esc(x.w)}">${plus}</button></div>`).join("")}</div>`;
+  const sub = rs.home.length ? `<small>Still at home: ${esc(joinAnd(rs.home))}. Add ${rs.miss.length === 1 ? "this" : "these"} to use them up before they expire.</small>` : "";
+  return `<div class="again"><div class="ahead">${esc(rs.rl.t)} again?${sub}</div>${rs.miss.map((x) => `<div class="arow"><div class="tx"><span class="word">${esc(x.w)}</span><div class="pickl">${esc(x.r.pick.b)} · ${esc(x.r.pick.n)}</div></div><button class="plus" data-radd="${esc(x.w)}" aria-label="Add ${esc(x.w)}">${plus}</button></div>`).join("")}</div>`;
 }
 // One tap moves a word onto your list, marked with the recipe it is for.
 function addRestock(w) {
@@ -1197,7 +1200,7 @@ $("again").onclick = () => {
 };
 
 // ===================== Demo =====================
-// D (or "Play demo"): plays by itself, about 130 s.
+// D (or "Play demo"): plays by itself, about 120 s.
 // → / PageDown / N (or a presentation clicker): one step at a time, at the presenter's pace.
 const PACE = 1.0; // higher = slower
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms * PACE));
@@ -1222,16 +1225,14 @@ function resetDemo() {
 }
 // Each step ends on a screen worth talking about. The pause after it is the auto-play dwell.
 const STEPS = [
-  { t: "A recipe Point suggested, as a list of its own", dwell: 3800, run: async () => { await tap(q('[data-list="r"]')); } },
   { t: "Write the list, as in Notes", dwell: 1800, run: async () => {
-    if ($("note").classList.contains("on")) { await tap(q("#note [data-back]"), 450); await sleep(700); }
     await tap($("compose"));
     await sleep(450); await type($("titleIn"), "Weekly shop", 80); await sleep(250); enter($("titleIn")); await sleep(300);
     for (const w of ["pasta", "oranges", "apples", "milk", "coffee", "olive oil"]) { await type(lastLine(), w, 105); await sleep(260); if (w !== "olive oil") enter(lastLine()); }
   } },
   { t: "Done: one answer under every word", dwell: 3400, run: async () => { await tap($("modeBtn")); } },
-  { t: "Oat pancakes again? Only what runs out: bananas and yoghurt", dwell: 2600, run: async () => {
-    q("#noteBody .again").scrollIntoView({ block: "center", behavior: "smooth" }); await sleep(1200);
+  { t: "Oat pancakes again? Bananas and yoghurt use up what is still at home", dwell: 2600, run: async () => {
+    q("#noteBody .again").scrollIntoView({ block: "center", behavior: "smooth" }); await sleep(3200); // time to read why: what is still at home
     await tap(q('[data-radd="bananas"]'), 500); await sleep(500);
     await tap(q('[data-radd="yoghurt"]'), 400); await sleep(400);
   } },
