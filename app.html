@@ -340,6 +340,14 @@
   .strip span.me { background: var(--violet); color: #fff; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--violet); }
   @keyframes rise { from { opacity: 0; transform: scaleY(.3); } }
   .strip-l { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink3); margin-top: 6px; }
+  /* scores close enough to count as the same: one outline around them, named on its border */
+  .strip.banded { align-items: center; }
+  .strip .band { display: flex; gap: 4px; padding: 3px; margin: 0 -1px; border: 1.5px dashed var(--blue); border-radius: 10px; }
+  .strip .band span { flex: 1; }
+  .strip-l .bl { color: var(--blue); font-weight: 700; }
+  .strip span.near { background: var(--blue-soft); color: var(--blue); }
+  .strip span.pick { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--violet); } /* your pick: a ring, the colour stays */
+  #oRank .rank { margin: 0 0 6px; }
   .btn:disabled { opacity: .45; box-shadow: none; }
   .opt .add { flex: none; height: 32px; padding: 0 12px; border-radius: 16px; background: var(--blue-soft); color: var(--blue); font-size: 13px; font-weight: 700; }
   .opt .tx i { display: block; font-style: normal; font-size: 12px; color: var(--ink3); }
@@ -442,6 +450,7 @@
   <div class="shead"><h2 id="oTitle"></h2><button class="x" data-close>Done</button></div>
   <p class="sub" id="oSub"></p>
   <div class="goals" id="oGoals"></div>
+  <div id="oRank"></div>
   <div id="oList"></div>
 </div>
 <div class="sheet dark" id="proof" role="dialog" aria-label="Why this product">
@@ -597,6 +606,7 @@ const SYN = {
   "baking powder": ["baking powder", "backpulver", "lievito per dolci", "levure chimique"],
   "protein powder": ["protein powder", "vanilla protein powder", "protein", "proteinpulver", "whey", "whey protein"],
 };
+const SAME = 10; // points: scores this close to the best count as virtually the same (illustrative)
 const USUAL = 74; // illustrative: average score of this user's usual basket
 // The family that shares a list. Everyone can add, pick and tick; changes appear on every phone at once.
 const FAM = {
@@ -1053,6 +1063,15 @@ function renderOthers(animate) {
   const cur = resolve(cat2word(oCat), st.cur).pick;
   const list = ranked(oCat, st.goal);
   const label = GOALS.find(([k]) => k === st.goal)[1];
+  // the whole shelf at a glance, as in the barcode scan; the near-best ones share one outline
+  const vals = list.map((p) => score(p, st.goal)), top = vals[0];
+  const k = top == null ? 0 : vals.filter((v) => v !== null && v >= top - SAME).length; // ranked, so they are the first k
+  const cells = list.map((p, i) => `<span class="${i === 0 && top != null ? "best" : i < k ? "near" : ""}${cur && cur.n === p.n ? " pick" : ""}" style="animation-delay:${i * 45}ms">${vals[i] ?? "–"}</span>`);
+  const what = st.goal === "all" ? "" : ` on ${label}`;
+  $("oRank").innerHTML = `<div class="rank"><h3>${k >= 2 ? `<em>Top ${k}</em>: pick the one you like` : `<em>Clear best</em>${what}`}</h3>
+    <p>${k >= 2 ? `Within ${SAME} points of each other${what}, so virtually the same for the planet.` : `The next one is more than ${SAME} points lower.`}</p>
+    <div class="strip${k >= 2 ? " banded" : ""}">${k >= 2 ? `<div class="band" style="flex:${k}">${cells.slice(0, k).join("")}</div>${cells.slice(k).join("")}` : cells.join("")}</div>
+    <div class="strip-l">${k >= 2 ? `<span class="bl">virtually the same</span>` : `<span>best</span>`}<span>${list.length} on this shelf</span></div></div>`;
   box.innerHTML = list.map((p, i) => {
     const v = score(p, st.goal);
     if (v === null) return `<div class="opt unv" data-n="${esc(p.n)}">${img(p)}<div class="tx"><b>${esc(p.b)} · ${esc(p.n)}</b><small>${p.pk} · ${chf(p.pr)}</small></div><span class="num">No verified score</span></div>`;
@@ -1258,8 +1277,8 @@ const STEPS = [
     $("note").scrollTo({ top: 0, behavior: "smooth" }); await sleep(700); // all the way up: shop and "found" stay in view
     await tap(q('.ihead[data-i="0"]'));
   } },
-  { t: "Other pastas, ranked by Km 0: pick the Swiss one", dwell: 2600, run: async () => {
-    await tap(q("[data-others]")); await sleep(1600);
+  { t: "Other pastas: the top 3 are virtually the same; by Km 0, pick the Swiss one", dwell: 2600, run: async () => {
+    await tap(q("[data-others]")); await sleep(3000);
     await tap(q('[data-goal="transport"]')); await sleep(2400);
     await tap(q('.opt[data-n="Tagliatelle, Swiss spelt"]')); // Point recommends, you decide; the sheet closes itself
   } },
